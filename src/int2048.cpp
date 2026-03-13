@@ -209,7 +209,10 @@ int2048 &int2048::operator*=(const int2048 &other) {
 }
 
 int2048 &int2048::operator/=(const int2048 &other) {
-    bool result_negative = negative != other.negative;
+    // Save original signs
+    bool dividend_negative = negative;
+    bool divisor_negative = other.negative;
+    bool result_negative = dividend_negative != divisor_negative;
 
     int2048 dividend = *this;
     dividend.negative = false;
@@ -217,6 +220,7 @@ int2048 &int2048::operator/=(const int2048 &other) {
     divisor.negative = false;
 
     if (dividend.compare_abs(divisor) < 0) {
+        // For floor division with different signs and non-zero dividend
         if (result_negative && (dividend.digits.size() > 1 || dividend.digits[0] != 0)) {
             *this = int2048(-1);
         } else {
@@ -253,14 +257,16 @@ int2048 &int2048::operator/=(const int2048 &other) {
 
     std::reverse(q_digits.begin(), q_digits.end());
     digits = q_digits;
-    negative = result_negative;
     remove_leading_zeros();
 
-    // Adjust for floor division
-    int2048 check = *this;
-    check *= other;
-    if (check != dividend && result_negative) {
-        subtract_abs(int2048(1));
+    // Apply floor division rule
+    // If signs differ and remainder is non-zero, add 1 to absolute value of quotient
+    bool has_remainder = remainder.digits.size() > 1 || remainder.digits[0] != 0;
+    if (result_negative && has_remainder) {
+        add_abs(int2048(1));
+        negative = true;
+    } else {
+        negative = result_negative;
     }
 
     return *this;

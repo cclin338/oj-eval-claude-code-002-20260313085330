@@ -78,8 +78,6 @@ public:
         read(s);
     }
 
-    int2048(const int2048 &other) : digits(other.digits), negative(other.negative) {}
-
     void read(const std::string &s) {
         digits.clear();
         negative = false;
@@ -108,96 +106,6 @@ public:
         }
     }
 
-    void print() {
-        if (negative) std::cout << '-';
-        std::cout << digits.back();
-        for (int i = digits.size() - 2; i >= 0; i--) {
-            int val = digits[i];
-            for (int j = BASE / 10; j > 0; j /= 10) {
-                std::cout << (val / j) % 10;
-            }
-        }
-    }
-
-    int2048 &add(const int2048 &other) {
-        if (negative == other.negative) {
-            add_abs(other);
-        } else {
-            int cmp = compare_abs(other);
-            if (cmp == 0) {
-                digits.clear();
-                digits.push_back(0);
-                negative = false;
-            } else if (cmp > 0) {
-                subtract_abs(other);
-            } else {
-                int2048 temp = other;
-                temp.subtract_abs(*this);
-                *this = temp;
-            }
-        }
-        return *this;
-    }
-
-    friend int2048 add(int2048 a, const int2048 &b) {
-        a.add(b);
-        return a;
-    }
-
-    int2048 &minus(const int2048 &other) {
-        if (negative != other.negative) {
-            add_abs(other);
-        } else {
-            int cmp = compare_abs(other);
-            if (cmp == 0) {
-                digits.clear();
-                digits.push_back(0);
-                negative = false;
-            } else if (cmp > 0) {
-                subtract_abs(other);
-            } else {
-                int2048 temp = other;
-                temp.subtract_abs(*this);
-                temp.negative = !temp.negative;
-                *this = temp;
-            }
-        }
-        return *this;
-    }
-
-    friend int2048 minus(int2048 a, const int2048 &b) {
-        a.minus(b);
-        return a;
-    }
-
-    int2048 operator+() const {
-        return *this;
-    }
-
-    int2048 operator-() const {
-        int2048 result = *this;
-        if (result.digits.size() != 1 || result.digits[0] != 0) {
-            result.negative = !result.negative;
-        }
-        return result;
-    }
-
-    int2048 &operator=(const int2048 &other) {
-        if (this != &other) {
-            digits = other.digits;
-            negative = other.negative;
-        }
-        return *this;
-    }
-
-    int2048 &operator+=(const int2048 &other) {
-        return add(other);
-    }
-
-    int2048 &operator-=(const int2048 &other) {
-        return minus(other);
-    }
-
     int2048 &operator*=(const int2048 &other) {
         bool result_negative = negative != other.negative;
 
@@ -219,10 +127,13 @@ public:
     }
 
     int2048 &operator/=(const int2048 &other) {
-        // Save original signs
         bool dividend_negative = negative;
         bool divisor_negative = other.negative;
         bool result_negative = dividend_negative != divisor_negative;
+
+        std::cout << "DEBUG: dividend_negative=" << dividend_negative
+                  << " divisor_negative=" << divisor_negative
+                  << " result_negative=" << result_negative << std::endl;
 
         int2048 dividend = *this;
         dividend.negative = false;
@@ -230,7 +141,6 @@ public:
         divisor.negative = false;
 
         if (dividend.compare_abs(divisor) < 0) {
-            // For floor division with different signs and non-zero dividend
             if (result_negative && (dividend.digits.size() > 1 || dividend.digits[0] != 0)) {
                 *this = int2048(-1);
             } else {
@@ -269,51 +179,29 @@ public:
         digits = q_digits;
         remove_leading_zeros();
 
-        // Apply floor division rule
-        // If signs differ and remainder is non-zero, add 1 to absolute value of quotient
+        std::cout << "DEBUG: quotient (abs) = " << digits[0] << std::endl;
+        std::cout << "DEBUG: remainder = " << remainder.digits[0] << std::endl;
+
         bool has_remainder = remainder.digits.size() > 1 || remainder.digits[0] != 0;
+        std::cout << "DEBUG: has_remainder = " << has_remainder << std::endl;
+
         if (result_negative && has_remainder) {
-            add_abs(int2048(1));
+            std::cout << "DEBUG: Subtracting 1 from quotient" << std::endl;
+            std::cout << "DEBUG: Before subtract: " << digits[0] << std::endl;
+            subtract_abs(int2048(1));
+            std::cout << "DEBUG: After subtract: " << digits[0] << std::endl;
             negative = true;
         } else {
             negative = result_negative;
         }
 
+        std::cout << "DEBUG: Final quotient = " << (negative ? "-" : "") << digits[0] << std::endl;
+
         return *this;
-    }
-
-    int2048 &operator%=(const int2048 &other) {
-        int2048 quotient = *this / other;
-        quotient *= other;
-        *this -= quotient;
-        return *this;
-    }
-
-    friend int2048 operator+(int2048 a, const int2048 &b) {
-        return a += b;
-    }
-
-    friend int2048 operator-(int2048 a, const int2048 &b) {
-        return a -= b;
-    }
-
-    friend int2048 operator*(int2048 a, const int2048 &b) {
-        return a *= b;
     }
 
     friend int2048 operator/(int2048 a, const int2048 &b) {
         return a /= b;
-    }
-
-    friend int2048 operator%(int2048 a, const int2048 &b) {
-        return a %= b;
-    }
-
-    friend std::istream &operator>>(std::istream &is, int2048 &num) {
-        std::string s;
-        is >> s;
-        num.read(s);
-        return is;
     }
 
     friend std::ostream &operator<<(std::ostream &os, const int2048 &num) {
@@ -327,39 +215,18 @@ public:
         }
         return os;
     }
-
-    friend bool operator==(const int2048 &a, const int2048 &b) {
-        return a.negative == b.negative && a.digits == b.digits;
-    }
-
-    friend bool operator!=(const int2048 &a, const int2048 &b) {
-        return !(a == b);
-    }
-
-    friend bool operator<(const int2048 &a, const int2048 &b) {
-        if (a.negative != b.negative) return a.negative;
-        if (a.digits.size() != b.digits.size()) {
-            return (a.digits.size() < b.digits.size()) != a.negative;
-        }
-        for (int i = a.digits.size() - 1; i >= 0; i--) {
-            if (a.digits[i] != b.digits[i]) {
-                return (a.digits[i] < b.digits[i]) != a.negative;
-            }
-        }
-        return false;
-    }
-
-    friend bool operator>(const int2048 &a, const int2048 &b) {
-        return b < a;
-    }
-
-    friend bool operator<=(const int2048 &a, const int2048 &b) {
-        return !(a > b);
-    }
-
-    friend bool operator>=(const int2048 &a, const int2048 &b) {
-        return !(a < b);
-    }
 };
 
 } // namespace sjtu
+
+int main() {
+    sjtu::int2048 a("-10");
+    sjtu::int2048 b("3");
+
+    std::cout << "Computing -10 / 3:" << std::endl;
+    sjtu::int2048 q = a / b;
+    std::cout << "Result: " << q << std::endl;
+    std::cout << "Expected: -4" << std::endl;
+
+    return 0;
+}
